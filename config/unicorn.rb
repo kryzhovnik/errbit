@@ -1,24 +1,32 @@
-# http://michaelvanrooijen.com/articles/2011/06/01-more-concurrency-on-a-single-heroku-dyno-with-the-new-celadon-cedar-stack/
+deploy_to  = "/var/apps/errbit"
+rails_root = "#{deploy_to}/current"
+pid_file   = "#{deploy_to}/shared/pids/unicorn.pid"
+socket_file= "#{deploy_to}/shared/unicorn.sock"
+log_file   = "#{rails_root}/log/unicorn.log"
+err_log    = "#{rails_root}/log/unicorn_error.log"
+old_pid    = pid_file + '.oldbin'
 
-worker_processes 3 # amount of unicorn workers to spin up
-timeout 30         # restarts workers that hang for 30 seconds
+worker_processes 1
+working_directory rails_root
+
+timeout 30
+listen socket_file, :backlog => 1024
+pid pid_file
+stderr_path err_log
+stdout_path log_file
+
 preload_app true
 
-# Taken from github: https://github.com/blog/517-unicorn
-# Though everyone uses pretty miuch the same code
+GC.copy_on_write_friendly = true if GC.respond_to?(:copy_on_write_friendly=)
+
+before_exec do |server|
+  ENV["BUNDLE_GEMFILE"] = "#{rails_root}/Gemfile"
+end
+
 before_fork do |server, worker|
-  ##
-  # When sent a USR2, Unicorn will suffix its pidfile with .oldbin and
-  # immediately start loading up a new version of itself (loaded with a new
-  # version of our app). When this new Unicorn is completely loaded
-  # it will begin spawning workers. The first worker spawned will check to
-  # see if an .oldbin pidfile exists. If so, this means we've just booted up
-  # a new Unicorn and need to tell the old one that it can now die. To do so
-  # we send it a QUIT.
-  #
-  # Using this method we get 0 downtime deploys.
- 
-  old_pid = "#{server.config[:pid]}.oldbin"
+  defined?(ActiveRecord::Base) and
+  ActiveRecord::Base.connection.disconnect!
+
   if File.exists?(old_pid) && server.pid != old_pid
     begin
       Process.kill("QUIT", File.read(old_pid).to_i)
@@ -27,3 +35,8 @@ before_fork do |server, worker|
     end
   end
 end
+after_fork do |server, worker|
+  defined?(ActiveRecord::Base) and
+  ActiveRecord::Base.establish_connection
+end
+puts 'Msg from unicorn. 3'
