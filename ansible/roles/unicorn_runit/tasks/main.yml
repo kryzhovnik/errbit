@@ -1,0 +1,55 @@
+---
+- name: Install runit
+  apt: pkg=runit state=latest
+
+- name: Create runit unicorn script directory
+  file: dest=/etc/sv/{{ app }}_unicorn state=directory
+
+- name: Copy runit unicorn script
+  template: >
+    src=sv-unicorn-run
+    dest=/etc/sv/{{ app }}_unicorn/run
+    owner=root group=root mode=755
+
+- name: Symlink runit unicorn script to /etc/service directory
+  file: >
+    src=/etc/sv/{{ app }}_unicorn/
+    dest=/etc/service/{{ app }}_unicorn
+    owner=root group=root state=link
+
+- name: Create runit log unicorn script directory
+  file: dest=/etc/sv/{{ app }}_unicorn/log state=directory
+
+- name: Copy runit log unicorn script
+  template: >
+    src=sv-unicorn-log-run
+    dest=/etc/sv/{{ app }}_unicorn/log/run
+    owner=root group=root mode=755
+
+- name: Set owner to have abillity to restart service under deploy user
+  file: >
+    owner={{ user }} group={{ user }} state=file
+    path=/etc/sv/{{ app }}_unicorn/supervise/{{ item }}
+  with_items:
+    - ok
+    - control
+    - status
+
+- name: Set permissions to /supervice directory
+  file: >
+    path=/etc/sv/{{ app }}_unicorn/supervise
+    mode=755 state=directory
+
+- name: Set owner to have abillity to restart log service under deploy user
+  file: >
+    owner={{ user }} group={{ user }} state=file
+    path=/etc/sv/{{ app }}_unicorn/log/supervise/{{ item }}
+  with_items:
+    - ok
+    - control
+    - status
+
+- name: Set permissions to log/supervice directory
+  file: >
+    path=/etc/sv/{{ app }}_unicorn/log/supervise
+    mode=755 state=directory

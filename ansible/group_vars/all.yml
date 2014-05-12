@@ -1,0 +1,11 @@
+---
+user: errbit
+app: errbit
+server_hostname: errbit.stagenv.ru
+app_dir: /var/apps/{{ app }}
+unicorn_config: "{{ app_dir }}/current/config/unicorn.rb"
+user_home: /home/{{ user }}
+ruby_version: 2.1.2
+rbenv_home: "{{ user_home }}/.rbenv"
+rbenv_env: RBENV_ROOT={{ rbenv_home }} PATH={{ rbenv_home }}/shims:{{ rbenv_home }}/bin:$PATH
+rbenv_cmd: "{{ rbenv_env }} rbenv"

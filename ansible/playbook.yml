@@ -1,0 +1,21 @@
+---
+- name: Install server to run Errbit rails app
+  hosts: all
+  remote_user: ansible
+  sudo: true
+  roles:
+  - app
+
+- name: Setup running app with unicorn and runit
+  hosts: production
+  remote_user: ansible
+  sudo: true
+  roles:
+  - unicorn_runit
+
+- name: Install nginx, configure app host
+  hosts: production
+  remote_user: ansible
+  sudo: true
+  roles:
+  - nginx

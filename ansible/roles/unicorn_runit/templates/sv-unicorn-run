@@ -1,0 +1,74 @@
+#!/bin/bash -e
+
+export RBENV_ROOT={{ rbenv_home }}
+export PATH={{ rbenv_home }}/shims:{{ rbenv_home }}/bin:$PATH
+
+APP="{{ app }}"
+APP_PATH="{{ app_dir }}"
+RAILS_ENV="production"
+UNICORN_CONFIG="{{ unicorn_config }}"
+CUR_PID_FILE="${APP_PATH}/shared/pids/unicorn.pid"
+OLD_PID_FILE="${PID_FILE}.oldbin"
+
+function is_unicorn_alive {
+  set +e
+  if [ -n $1 ] && kill -0 $1 >/dev/null 2>&1; then
+    echo "yes"
+  fi
+  set -e
+}
+
+if [ -e $OLD_PID_FILE ]; then
+  OLD_PID=$(cat $OLD_PID_FILE)
+  echo "Waiting for existing master to exit. PID: ($OLD_PID)."
+  while [ -n "$(is_unicorn_alive $OLD_PID)" ]; do
+    /bin/echo -n '.'
+    sleep 2
+  done
+fi
+
+if [ -e $CUR_PID_FILE ]; then
+  CUR_PID=$(cat $CUR_PID_FILE)
+  if [ -n "$(is_unicorn_alive $CUR_PID)" ]; then
+    echo "Unicorn master already running. PID: ($CUR_PID)."
+    RUNNING=true
+  fi
+fi
+
+if [ ! $RUNNING ]; then
+  echo "Starting unicorn."
+  CMD="$APP_PATH/current/bin/unicorn -E $RAILS_ENV -c $UNICORN_CONFIG -D"
+  exec chpst -u "{{ user }}:{{ user }}" $CMD
+  sleep 3
+  CUR_PID=$(cat $CUR_PID_FILE)
+fi
+
+function restart {
+  echo "Initialize new master with USR2."
+  kill -USR2 $CUR_PID
+  # Make runit restart to pick up new unicorn pid
+  sleep 2
+  echo "Restarting service to capture new pid."
+  exit
+}
+
+function graceful_shutdown {
+  echo "Initializing graceful shutdown."
+  kill -QUIT $CUR_PID
+}
+
+trap restart HUP QUIT
+trap graceful_shutdown INT TERM
+
+for sig in USR1 USR2
+do
+  trap 'kill -'$sig' $(cat $CUR_PID_FILE)' $sig
+done
+
+echo "Waiting for current master to die. PID: ($CUR_PID)"
+while [ -n "$(is_unicorn_alive $CUR_PID)" ]; do
+  /bin/echo -n '.'
+  sleep 2
+done
+
+echo "Unicorn process ($CUR_PID) has quit."

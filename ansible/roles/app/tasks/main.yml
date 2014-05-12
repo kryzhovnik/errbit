@@ -1,0 +1,42 @@
+---
+- name: update aptitude
+  apt: update_cache=yes
+
+- name: install standart packages
+  apt: pkg={{ item }} state=latest
+  with_items:
+    - build-essential
+    - automake
+    - bison
+    - autoconf
+    - pkg-config
+    - libreadline6
+    - libreadline6-dev
+    - openssl
+    - libssl-dev
+    - curl
+    - git-core
+    - zlib1g
+    - zlib1g-dev
+    - libyaml-dev
+    - libsqlite3-dev
+    - libxml2-dev
+    - libxslt1-dev
+    - curl
+
+- name: add user
+  user: name={{ user }} shell='/bin/bash'
+
+- name: copy public key to auth as deploy-user
+  authorized_key: user={{ user }} key="{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+- include: ruby.yml
+- include: mongodb.yml
+
+- name: create app directories
+  file: dest={{ item }} mode=755 owner={{ user }} group={{ user }} state=directory
+  with_items:
+    - "{{ app_dir }}"
+    - "{{ app_dir }}/shared"
+    - "{{ app_dir }}/shared/log"
+    - "{{ app_dir }}/shared/pids"

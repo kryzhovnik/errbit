@@ -1,0 +1,5 @@
+#!/bin/sh
+LOG_FOLDER={{ app_dir }}/shared/log/{{ app }}_unicorn
+mkdir -p $LOG_FOLDER
+exec svlogd -tt $LOG_FOLDER
+
