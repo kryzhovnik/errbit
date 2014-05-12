@@ -39,4 +39,3 @@ after_fork do |server, worker|
   defined?(ActiveRecord::Base) and
   ActiveRecord::Base.establish_connection
 end
-puts 'Msg from unicorn. 3'
