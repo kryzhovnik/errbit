@@ -38,5 +38,6 @@
   with_items:
     - "{{ app_dir }}"
     - "{{ app_dir }}/shared"
+    - "{{ app_dir }}/releases"
     - "{{ app_dir }}/shared/log"
     - "{{ app_dir }}/shared/pids"
